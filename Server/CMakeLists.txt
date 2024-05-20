@@ -18,7 +18,7 @@ set(SERVER_SRC
     ${SRC_DIR}/main.cpp 
     ${SRC_DIR}/Server.cpp
     ${SRC_DIR}/RSAManager.cpp
-    ${SRC_DIR}/AESManager.cpp
+    ${SRC_DIR}/RSAManager.cpp
 )
 
 include_directories(${INCLUDE_DIR})
