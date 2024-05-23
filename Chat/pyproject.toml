@@ -11,6 +11,9 @@ python = "^3.10"
 flask = "^3.0.3"
 requests = "^2.32.2"
 python-dotenv = "^1.0.1"
+flask-socketio = "^5.3.6"
+flask-cors = "^4.0.1"
+eventlet = "^0.36.1"
 
 
 [tool.poetry.group.dev.dependencies]
