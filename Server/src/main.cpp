@@ -2,7 +2,7 @@
 
 int main(int argc, char** argv) 
 {
-    TCPserver::Server server(8288, "127.0.0.1");
+    Server server(atoi(argv[2]), argv[1]);
     server.start();
 
     return 0;
