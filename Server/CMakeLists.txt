@@ -8,7 +8,7 @@ find_package(OpenSSL REQUIRED)
 include_directories(${OPENSSL_INCLUDE_DIR})
 
 # Установка значения макроса OPENSSL_API_COMPAT
-add_compile_definitions(OPENSSL_API_COMPAT=0x10100000L)
+#add_compile_definitions(OPENSSL_API_COMPAT=0x10100000L)
 
 set(SRC_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -18,7 +18,7 @@ set(SERVER_SRC
     ${SRC_DIR}/main.cpp 
     ${SRC_DIR}/Server.cpp
     ${SRC_DIR}/RSAManager.cpp
-    ${SRC_DIR}/AESManager.cpp
+    #${SRC_DIR}/AESManager.cpp
     ${SRC_DIR}/SocketManager.cpp
 )
 
