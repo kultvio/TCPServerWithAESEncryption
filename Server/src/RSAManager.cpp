@@ -1,9 +1,7 @@
 #include "RSAManager.h"
 
 
-RSAEncryption::RSAEncryption(int keySize) {
-    generateKeys(keySize);
-}
+RSAEncryption::RSAEncryption() : pkey(nullptr), ctx(nullptr) {}
 
 RSAEncryption::~RSAEncryption() {
     if (ctx) EVP_PKEY_CTX_free(ctx);
@@ -17,11 +15,48 @@ void RSAEncryption::generateKeys(int keySize) {
     if (!ctx) throw std::runtime_error("EVP_PKEY_CTX_new_id failed");
     if (EVP_PKEY_keygen_init(ctx) <= 0) throw std::runtime_error("EVP_PKEY_keygen_init failed");
     if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, keySize) <= 0) throw std::runtime_error("EVP_PKEY_CTX_set_rsa_keygen_bits failed");
-    
     if (EVP_PKEY_keygen(ctx, &pkey) <= 0) throw std::runtime_error("EVP_PKEY_keygen failed");
 
     publicKey = keyToString(pkey, true);
     privateKey = keyToString(pkey, false);
+}
+
+void RSAEncryption::saveKeysToFIle(const std::string& publicKeyFile, const std::string& privateKeyFile) {
+    std::ofstream pubOut(publicKeyFile);
+    if(!pubOut) throw std::runtime_error("Failed to open public key file for writing");
+    pubOut << publicKey;
+    pubOut.close();
+
+    std::ofstream privOut(privateKeyFile);
+    if(!privOut) throw std::runtime_error("Falied to open private key file for writing");
+    privOut << privateKey;
+    privOut.close();
+}
+
+void RSAEncryption::loadKeysFromFile(const std::string& publicKeyFile, const std::string& privateKeyFile) {
+    std::ifstream pubIn(publicKeyFile);
+    if(!pubIn) throw std::runtime_error("Failed to open public key file for reading");
+    publicKey.assign((std::istreambuf_iterator<char>(pubIn)), std::istreambuf_iterator<char>());
+    pubIn.close();
+
+    std::ifstream privIn(privateKeyFile);
+    if(!privIn) throw std::runtime_error("Falied to open private key file for reading");
+    privateKey.assign((std::istreambuf_iterator<char>(privIn)), std::istreambuf_iterator<char>());
+    privIn.close();
+
+    loadKeysFromString(publicKey, true);
+    loadKeysFromString(privateKey, false);
+}
+
+void RSAEncryption::loadKeysFromString(const std::string& keyStr, bool isPublic) {
+    BIO* bio = BIO_new_mem_buf(keyStr.data(), keyStr.size());
+    if(isPublic) {
+        pkey = PEM_read_bio_PUBKEY(bio, NULL, NULL, NULL);
+    } else {
+        pkey = PEM_read_bio_PrivateKey(bio, NULL, NULL, NULL);
+    }
+    BIO_free(bio);
+    if(!pkey) throw std::runtime_error("Failed to load key from string");
 }
 
 std::string RSAEncryption::keyToString(EVP_PKEY* pkey, bool isPublic) const {
@@ -79,3 +114,4 @@ std::string RSAEncryption::getPublicKey() const {
 std::string RSAEncryption::getPrivateKey() const {
     return privateKey;
 }
+

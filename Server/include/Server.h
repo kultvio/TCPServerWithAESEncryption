@@ -1,5 +1,6 @@
 #pragma once
 #include "SocketManager.h"
+#include "RSAManager.h"
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -21,8 +22,12 @@ public:
     Server(int port, const std::string& ipaddress);
     ~Server();
     void start();
+    void generateCertificate();
+    int loadCertificate(std::string path);
     int* getConnections();
 private:
+    
+
     void getConnect();
     static void* ClientHandler(void* lpParam);
     struct ClientData 
@@ -38,6 +43,7 @@ private:
 
     ClientData clientData;
 
+    
 };
 
 

@@ -3,44 +3,60 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <iomanip>
 
-<<<<<<< Updated upstream
+void printError(char** argv) {
+    std::cerr << "Usage: " << argv[0] << " <ip_address> <port> --command [<filename>]" << std::endl;
+    std::cerr << "Commands:" << std::endl;
+    std::cerr << std::setw(20) << std::left <<"--generate" <<  "- Generate RSA keys and cert" << std::endl;
+    std::cerr << std::setw(20) <<  std::left <<"--load <public.pem> <private.pem>" << "- Load RSA keys and cert" << std::endl;
+    
+}
+
 int main(int argc, char** argv) 
 {
-    Server server(atoi(argv[2]), argv[1]);
-    server.start();
-=======
-
-int main(int argc, char** argv)  {
-    try {
-        RSAEncryption rsaEncryption(2048);
-
-        std::string publicKey = rsaEncryption.getPublicKey();
-        std::string privateKey = rsaEncryption.getPrivateKey();
-
-        std::cout << "Public Key:\n" << publicKey << "\n";
-        std::cout << "Private Key:\n" << privateKey << "\n";
-
-        std::string plainText = "Test Message";
-        std::vector<unsigned char> plainData(plainText.begin(), plainText.end());
-
-        // Шифруем данные
-        std::vector<unsigned char> encryptedData = rsaEncryption.encrypt(plainData);
-        std::cout << "Encrypted Data:\n";
-        for (unsigned char byte : encryptedData) {
-            std::cout << std::hex << static_cast<int>(byte);
-        }
-        std::cout << "\n";
-
-        // Дешифруем данные
-        std::vector<unsigned char> decryptedData = rsaEncryption.decrypt(encryptedData);
-        std::string decryptedText(decryptedData.begin(), decryptedData.end());
-
-        std::cout << "Decrypted Text:\n" << decryptedText << "\n";
-    } catch (const std::exception& e) {
-        std::cerr << "Error: " << e.what() << "\n";
+    if( argc < 4) {
+        printError(argv);
+        return 1;
     }
->>>>>>> Stashed changes
 
+    std::string ipAddress = argv[1];
+    int port = atoi(argv[2]);
+    Server server(port, ipAddress);
+    
+    const char* command = argv[3];
+
+    RSAEncryption rsa;
+
+    if(strcmp(command, "--generate") == 0) {
+        std::cout << command << std::endl;
+        try
+        {
+            rsa.generateKeys(4096);
+            rsa.saveKeysToFIle("public.pem", "private.pem");
+            //server.generateCertificate();
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            return 1;
+        }
+        
+    } else if (strcmp(command, "--load") == 0) {
+        if (argc != 6) {
+            std::cerr << "Usage: " << argv[0] << "--load <public.pem> <private.pem>" << std::endl;
+            return 1;
+        }
+        const char* publicFile = argv[4];
+        const char* privateFile = argv[5];
+        rsa.loadKeysFromFile(publicFile, privateFile);
+    } else {
+        std::cerr << "Invalid command." << std::endl;
+        printError(argv);
+        return 1;
+    }
+    
+
+    server.start();
     return 0;
 }

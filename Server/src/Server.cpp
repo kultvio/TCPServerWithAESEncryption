@@ -11,6 +11,27 @@ Server::~Server() {
     socketManager.~SocketManager();
 }
 
+
+// void Server::generateCertificate() {
+//     std::cout << "[INFO] Starting cerificate generation" << std::endl;
+//     RSAEncryption rsa(2048);
+//     std::cout << rsa.getPublicKey().size() << std::endl;
+//     std::string public_key = rsa.getPublicKey();
+//     std::cout << "[INFO] Public key obtained:" << public_key << std::endl;
+
+//     std::vector<unsigned char> key_data(public_key.begin(), public_key.end());
+//     std::cout << key_data.size();
+//     std::vector<unsigned char> signature = rsa.encrypt(key_data);
+
+//     std::cout << "[INFO] Signature generated, size: " << signature.size() << " bytes" << std::endl;
+//     std::string cert = "-----BEGIN CERTIFICATE-----\n";
+//     cert += "PublicKey: " + public_key + "\n";
+//     cert += "Signature: " + std::string(signature.begin(), signature.end()); + "\n";
+//     cert += "-----END CERTIFICATE-----\n";
+
+//     std::cout << "[INFO] Certificate generation completed \n" << cert << std::endl;
+// }
+
 void Server::start() {
     socketManager.init();
     std::cout << "Complete init" << std::endl;
@@ -46,13 +67,16 @@ void Server::getConnect()
     }
 }
 
+
+
+
 void* Server::ClientHandler(void* lpParam) 
 {
     ClientData* clientData = static_cast<ClientData*>(lpParam);
     Server* server = clientData->server;
     int connectionIndex = clientData->connectionIndex;
-    std::cout << "Handling client with index: " << connectionIndex << std::endl;
 
+    std::cout << "Handling client with index: " << connectionIndex << std::endl;
     PacketType pType;
     while (true)
     {
