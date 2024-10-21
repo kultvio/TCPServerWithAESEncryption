@@ -34,7 +34,6 @@ int main(int argc, char** argv)
         {
             rsa.generateKeys(4096);
             rsa.saveKeysToFIle("public.pem", "private.pem");
-            //server.generateCertificate();
         }
         catch(const std::exception& e)
         {
@@ -55,7 +54,6 @@ int main(int argc, char** argv)
         printError(argv);
         return 1;
     }
-    
 
     server.start();
     return 0;

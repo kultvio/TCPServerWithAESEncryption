@@ -21,6 +21,43 @@ void RSAEncryption::generateKeys(int keySize) {
     privateKey = keyToString(pkey, false);
 }
 
+std::vector<unsigned char> RSAEncryption::sign(const std::vector<unsigned char>& data) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256(data.data(), data.size(), hash);
+
+    EVP_MD_CTX* mdCtx = EVP_MD_CTX_new();
+    if(!mdCtx) throw std::runtime_error("Failed to create signing context");
+
+    if(EVP_SignInit(mdCtx, EVP_sha256()) <= 0) throw std::runtime_error("Error initializing the signing operation");
+
+    if(EVP_SignUpdate(mdCtx, hash, SHA256_DIGEST_LENGTH) <= 0) throw std::runtime_error("Error updating the signing operation");
+
+    std::vector<unsigned char> signature(EVP_PKEY_size(pkey));
+    unsigned int sigLen;
+
+    if(EVP_SignFinal(mdCtx, signature.data(), &sigLen, pkey) <= 0) throw std::runtime_error("Error finalizing the signature");
+
+    signature.resize(sigLen);
+    EVP_MD_CTX_free(mdCtx);
+
+    return signature;
+}
+bool RSAEncryption::verify(const std::vector<unsigned char>& data, const std::vector<unsigned char>& signature) {
+    unsigned char hash[SHA256_DIGEST_LENGTH];
+    SHA256(data.data(), data.size(), hash);
+
+    EVP_MD_CTX* mdCtx = EVP_MD_CTX_new();
+    if(!mdCtx) throw std::runtime_error("Failed to create veirfy context");
+
+    if(EVP_VerifyInit(mdCtx, EVP_sha256()) <= 0) throw std::runtime_error("Error initializing the veirfy operation");
+
+    if(EVP_VerifyUpdate(mdCtx, hash, SHA256_DIGEST_LENGTH) <= 0) throw std::runtime_error("Error updating the veirfy operation");
+
+    int result =  EVP_VerifyFinal(mdCtx, signature.data(), signature.size(), pkey);
+    EVP_MD_CTX_free(mdCtx);
+
+    return result == 1;
+}
 void RSAEncryption::saveKeysToFIle(const std::string& publicKeyFile, const std::string& privateKeyFile) {
     std::ofstream pubOut(publicKeyFile);
     if(!pubOut) throw std::runtime_error("Failed to open public key file for writing");
