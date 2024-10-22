@@ -20,6 +20,7 @@ set(SERVER_SRC
     ${SRC_DIR}/RSAManager.cpp
     #${SRC_DIR}/AESManager.cpp
     ${SRC_DIR}/SocketManager.cpp
+    ${SRC_DIR}/Logger.cpp
 )
 
 include_directories(${INCLUDE_DIR})

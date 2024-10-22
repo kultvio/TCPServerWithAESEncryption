@@ -1,6 +1,7 @@
 #pragma once
 #include "SocketManager.h"
 #include "RSAManager.h"
+#include "Logger.h"
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -19,12 +20,13 @@ class PacketHandler;
 
 class Server {
 public:
-    Server(int port, const std::string& ipaddress);
+    Server(int port, const std::string& ipaddress, Logger& logger);
     ~Server();
     void start();
     void generateCertificate();
     int loadCertificate(std::string path);
     int* getConnections();
+    void log(std::string& message) { logger.log(message);}
 private:
     
 
@@ -36,6 +38,7 @@ private:
         int connectionIndex;
     };
 
+    Logger& logger;
     SocketManager socketManager;
     std::unique_ptr<PacketHandler> packetHandler;
     uint counter;

@@ -1,7 +1,7 @@
 #include "RSAManager.h"
 
 
-RSAEncryption::RSAEncryption() : pkey(nullptr), ctx(nullptr) {}
+RSAEncryption::RSAEncryption(Logger& logger) : pkey(nullptr), ctx(nullptr), logger(logger) {}
 
 RSAEncryption::~RSAEncryption() {
     if (ctx) EVP_PKEY_CTX_free(ctx);
@@ -9,6 +9,8 @@ RSAEncryption::~RSAEncryption() {
 }
 
 void RSAEncryption::generateKeys(int keySize) {
+    logger.log("Generate RSA keys");
+
     pkey = EVP_PKEY_new();
     ctx = EVP_PKEY_CTX_new_id(EVP_PKEY_RSA, NULL);
     
@@ -16,7 +18,7 @@ void RSAEncryption::generateKeys(int keySize) {
     if (EVP_PKEY_keygen_init(ctx) <= 0) throw std::runtime_error("EVP_PKEY_keygen_init failed");
     if (EVP_PKEY_CTX_set_rsa_keygen_bits(ctx, keySize) <= 0) throw std::runtime_error("EVP_PKEY_CTX_set_rsa_keygen_bits failed");
     if (EVP_PKEY_keygen(ctx, &pkey) <= 0) throw std::runtime_error("EVP_PKEY_keygen failed");
-
+    
     publicKey = keyToString(pkey, true);
     privateKey = keyToString(pkey, false);
 }

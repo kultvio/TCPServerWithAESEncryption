@@ -1,8 +1,9 @@
 #include "Server.h"
 
-Server::Server(int port, const std::string& ipaddress)
-    : socketManager(port, ipaddress),
+Server::Server(int port, const std::string& ipaddress, Logger& logger)
+    : socketManager(port, ipaddress, logger),
     packetHandler(new PacketHandler(this)),
+    logger(logger),
     counter(0) {for (int i = 0; i < MAX_CONNECTIONS; ++i) {
         connections[i] = -1;
     }}
@@ -34,7 +35,7 @@ Server::~Server() {
 
 void Server::start() {
     socketManager.init();
-    std::cout << "Complete init" << std::endl;
+    logger.log("Complete init");
     while (true)
     {
         getConnect();
@@ -50,7 +51,7 @@ void Server::getConnect()
     int newConnection = socketManager.acceptConnection();
     if(newConnection == -1)
     {
-        std::cerr << "Error: accept connetion -1";
+        logger.log("Error: accept connetion -1");
         return;
     }
     for(int i = 0; i < MAX_CONNECTIONS; i++)
@@ -58,7 +59,7 @@ void Server::getConnect()
         if(connections[i] == -1)
         {
             connections[i] = newConnection;
-            std::cout << "Client connected! \n";
+            logger.log("Client connected!");
 
             clientData = {this, i};
             std::thread(ClientHandler, &clientData).detach();
@@ -76,7 +77,7 @@ void* Server::ClientHandler(void* lpParam)
     Server* server = clientData->server;
     int connectionIndex = clientData->connectionIndex;
 
-    std::cout << "Handling client with index: " << connectionIndex << std::endl;
+    server->logger.log("Handling client with index: " + std::to_string(connectionIndex));
     PacketType pType;
     while (true)
     {
@@ -86,7 +87,7 @@ void* Server::ClientHandler(void* lpParam)
             close(server->connections[connectionIndex]);
             server->connections[connectionIndex] = -1;
             server->counter--;
-            std::cout << "\nClient with index " << connectionIndex << " disconnected. \n";
+            server->logger.log("Client with index " + std::to_string(connectionIndex) + " disconnected.");
             return nullptr;
         }
         server->packetHandler->HandlePacket(connectionIndex,pType);
@@ -147,11 +148,8 @@ bool TextPacketProcessor::processPacket(Server* server, uint index) {
         delete[] msg;
         return false;
     }
-
-    std::cout << "\nNew Message:\n"
-              << "Index: " << index << "\n"
-              << "Message Size: " << msgSize << "\n"
-              << "Text:\n[ " << msg << " ]\n";
+    std::string logMessage = "New Message: Index: " + std::to_string(index) + " Message Size: " + std::to_string(msgSize)  + " Text:[ " + msg + " ]";
+    server->log(logMessage);
 
     for (int i = 0; i < MAX_CONNECTIONS; i++) {
         if (i == index) continue;

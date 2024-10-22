@@ -1,6 +1,7 @@
 #include <openssl/rsa.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
+#include "Logger.h"
 #include <vector>
 #include <string>
 #include <stdexcept>
@@ -10,7 +11,7 @@
 
 class RSAEncryption {
 public:
-    RSAEncryption();
+    RSAEncryption(Logger& logger);
     ~RSAEncryption();
     
     std::vector<unsigned char> encrypt(const std::vector<unsigned char>& data);
@@ -28,6 +29,7 @@ public:
     
 
 private:
+    Logger& logger;
     RSA* rsa;
     EVP_PKEY* pkey;
     EVP_PKEY_CTX* ctx;
