@@ -1,41 +1,48 @@
 #include "Server.h"
 
-Server::Server(int port, const std::string& ipaddress, Logger& logger)
+Server::Server(int port, const std::string& ipaddress, Logger& logger, RSAEncryption& rsa)
     : socketManager(port, ipaddress, logger),
     packetHandler(new PacketHandler(this)),
     logger(logger),
+    rsa(rsa),
     counter(0) {for (int i = 0; i < MAX_CONNECTIONS; ++i) {
         connections[i] = -1;
     }}
 
 Server::~Server() {
-    socketManager.~SocketManager();
 }
 
+std::string vectorToHexString(const std::vector<unsigned char>& data) {
+    std::stringstream hexStream;
 
-// void Server::generateCertificate() {
-//     std::cout << "[INFO] Starting cerificate generation" << std::endl;
-//     RSAEncryption rsa(2048);
-//     std::cout << rsa.getPublicKey().size() << std::endl;
-//     std::string public_key = rsa.getPublicKey();
-//     std::cout << "[INFO] Public key obtained:" << public_key << std::endl;
+    for(unsigned char byte: data) {
+        hexStream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+    }
 
-//     std::vector<unsigned char> key_data(public_key.begin(), public_key.end());
-//     std::cout << key_data.size();
-//     std::vector<unsigned char> signature = rsa.encrypt(key_data);
+    return hexStream.str();
+}
+void Server::initCert() {
+    logger.log("Loading public key");
+    std::string publickey = rsa.getPublicKey();
+    cert.publickey = std::vector<unsigned char>(publickey.begin(), publickey.end());
+    std::string data = "Server name: KultCryptoCode; Certificate from: " + logger.getCurrentTIme();
+    cert.data =  std::vector<unsigned char>(data.begin(), data.end());
+    
 
-//     std::cout << "[INFO] Signature generated, size: " << signature.size() << " bytes" << std::endl;
-//     std::string cert = "-----BEGIN CERTIFICATE-----\n";
-//     cert += "PublicKey: " + public_key + "\n";
-//     cert += "Signature: " + std::string(signature.begin(), signature.end()); + "\n";
-//     cert += "-----END CERTIFICATE-----\n";
-
-//     std::cout << "[INFO] Certificate generation completed \n" << cert << std::endl;
-// }
+    logger.log("Creating signature");
+    cert.signature = rsa.sign(cert.data);
+    logger.log("Cert created");
+    logger.log("Cert data: " + data);
+}
 
 void Server::start() {
+    logger.log("Init socket");
     socketManager.init();
     logger.log("Complete init");
+    
+    logger.log("Creating cert");
+    initCert();
+
     while (true)
     {
         getConnect();
@@ -60,7 +67,8 @@ void Server::getConnect()
         {
             connections[i] = newConnection;
             logger.log("Client connected!");
-
+            counter++;
+            logger.log("Counter: " + std::to_string(counter));
             clientData = {this, i};
             std::thread(ClientHandler, &clientData).detach();
             return;
@@ -68,7 +76,13 @@ void Server::getConnect()
     }
 }
 
+bool Server::handshake(int clienSocket) {
+    int success = 0;
+    
 
+
+    return success == 1;
+}
 
 
 void* Server::ClientHandler(void* lpParam) 
@@ -76,6 +90,9 @@ void* Server::ClientHandler(void* lpParam)
     ClientData* clientData = static_cast<ClientData*>(lpParam);
     Server* server = clientData->server;
     int connectionIndex = clientData->connectionIndex;
+    server->logger.log("Try to handshake with client: " + std::to_string(connectionIndex));
+    server->handshake(server->connections[connectionIndex]);
+
 
     server->logger.log("Handling client with index: " + std::to_string(connectionIndex));
     PacketType pType;
@@ -124,10 +141,6 @@ PacketHandler::~PacketHandler()
 {
 
 }
-
-
-
-
 
 
 // TEXTPACKET --------------------------------

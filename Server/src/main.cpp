@@ -23,13 +23,8 @@ int main(int argc, char** argv)
     Logger logger;
     std::string ipAddress = argv[1];
     int port = atoi(argv[2]);
-    Server server(port, ipAddress, logger);
     const char* command = argv[3];
-
-    
     RSAEncryption rsa(logger);
-    
-
     if(strcmp(command, "--generate") == 0) {
         std::cout << command << std::endl;
         try
@@ -57,6 +52,7 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    Server server(port, ipAddress, logger, rsa);
     server.start();
     return 0;
 }

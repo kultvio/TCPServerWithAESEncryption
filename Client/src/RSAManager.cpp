@@ -1,4 +1,4 @@
-#include "RSAManager.h"
+#include "../include/RSAManager.h"
 
 
 RSAEncryption::RSAEncryption(Logger& logger) : pkey(nullptr), ctx(nullptr), logger(logger) {}
@@ -96,6 +96,15 @@ void RSAEncryption::loadKeysFromString(const std::string& keyStr, bool isPublic)
     }
     BIO_free(bio);
     if(!pkey) throw std::runtime_error("Failed to load key from string");
+}
+
+void RSAEncryption::loadPublicKeyFromFile(const std::string& publicKeyFile) {
+    std::ifstream pubIn(publicKeyFile);
+    if(!pubIn) throw std::runtime_error("Failed to open public key file for reading");
+    publicKey.assign((std::istreambuf_iterator<char>(pubIn)), std::istreambuf_iterator<char>());
+    pubIn.close();
+
+    loadKeysFromString(publicKey, true);
 }
 
 std::string RSAEncryption::keyToString(EVP_PKEY* pkey, bool isPublic) const {

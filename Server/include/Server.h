@@ -13,23 +13,23 @@
 #include <unordered_map>
 #include <string>
 #include <cassert>
-
+#include <sstream>
 #define MAX_CONNECTIONS 10
 
 class PacketHandler;
 
 class Server {
 public:
-    Server(int port, const std::string& ipaddress, Logger& logger);
+    Server(int port, const std::string& ipaddress, Logger& logger, RSAEncryption& rsa);
     ~Server();
     void start();
+	void initCert();
     void generateCertificate();
-    int loadCertificate(std::string path);
     int* getConnections();
     void log(std::string& message) { logger.log(message);}
 private:
     
-
+    bool handshake(int clientSoket);
     void getConnect();
     static void* ClientHandler(void* lpParam);
     struct ClientData 
@@ -38,14 +38,23 @@ private:
         int connectionIndex;
     };
 
+	struct Certificate {
+		std::vector<unsigned char> publickey;
+		std::vector<unsigned char> data;
+		std::vector<unsigned char> signature;
+	};
+	
     Logger& logger;
+	RSAEncryption& rsa;
+
     SocketManager socketManager;
     std::unique_ptr<PacketHandler> packetHandler;
     uint counter;
+
     int connections[MAX_CONNECTIONS];
 
     ClientData clientData;
-
+	Certificate cert;
     
 };
 

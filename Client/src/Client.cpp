@@ -1,9 +1,9 @@
- #include "Client.h"
+#include "Client.h"
 
 
 namespace TCPserver
 {
- Client::Client(int port, std::string ipaddress) : port(port), ipaddress(ipaddress), addrlength(sizeof(addr))
+ Client::Client(int port, std::string ipaddress, RSAEncryption& rsaServer) : port(port), ipaddress(ipaddress), addrlength(sizeof(addr)), rsaServer(rsaServer)
     {
         // Инициализация сокета
         Connection = socket(AF_INET, SOCK_STREAM, 0);
@@ -25,6 +25,7 @@ namespace TCPserver
 
     void Client::start()
     {
+        std::cout << rsaServer.getPublicKey();
         init();
         connectToServer();
         while (true)

@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <string>
 #include <cassert>
+#include "RSAManager.h"
 
 namespace TCPserver
 {
@@ -34,9 +35,10 @@ namespace TCPserver
         bool sendChatPacket();
 
         static void* ClientHandler(void* lpParam);
+        RSAEncryption& rsaServer;
 
     public:
-        Client(int port, std::string ipaddress);
+        Client(int port, std::string ipaddress, RSAEncryption& rsaServer);
         ~Client();
 
     public:
