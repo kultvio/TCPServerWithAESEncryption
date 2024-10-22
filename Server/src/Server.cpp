@@ -1,4 +1,6 @@
 #include "Server.h"
+#include <algorithm>
+    
 
 Server::Server(int port, const std::string& ipaddress, Logger& logger, RSAEncryption& rsa)
     : socketManager(port, ipaddress, logger),
@@ -21,6 +23,25 @@ std::string vectorToHexString(const std::vector<unsigned char>& data) {
 
     return hexStream.str();
 }
+
+std::vector<unsigned char> Server::serializeCert(const Certificate& cert) {
+    logger.log("Serializing cert");
+
+    std::vector<unsigned char> buffer;
+
+    auto appendData = [&](const std::vector<unsigned char>& data) {
+        int size = data.size();
+        buffer.insert(buffer.end(),(unsigned char*)&size,(unsigned char*)&size+ sizeof(int));
+        buffer.insert(buffer.end(), data.begin(),data.end());
+    };
+
+    appendData(cert.publickey);
+    appendData(cert.data);
+    appendData(cert.signature);
+    logger.log("cert size: " + std::to_string(buffer.size()));
+    return buffer;
+}
+
 void Server::initCert() {
     logger.log("Loading public key");
     std::string publickey = rsa.getPublicKey();
@@ -33,6 +54,8 @@ void Server::initCert() {
     cert.signature = rsa.sign(cert.data);
     logger.log("Cert created");
     logger.log("Cert data: " + data);
+
+    serializedCert = serializeCert(cert);
 }
 
 void Server::start() {
@@ -75,13 +98,31 @@ void Server::getConnect()
         }
     }
 }
+bool Server::handshake(int clientSocket) {
+    logger.log("Sending serialized certificate to client...");
 
-bool Server::handshake(int clienSocket) {
-    int success = 0;
+    // Сериализуем сертификат и отправляем его целиком
+    int certSize = serializedCert.size();
     
+    // Отправляем размер и сам сериализованный буфер
+    send(clientSocket, (char*)&certSize, sizeof(int), 0);
+    send(clientSocket, (char*)serializedCert.data(), certSize, 0);
 
+    logger.log("Waiting for encrypted message from client...");
 
-    return success == 1;
+    // Принимаем зашифрованное сообщение от клиента
+    int encryptedSize;
+    recv(clientSocket, (char*)&encryptedSize, sizeof(int), 0);
+    std::vector<unsigned char> encryptedMessage(encryptedSize);
+    recv(clientSocket, (char*)encryptedMessage.data(), encryptedSize, 0);
+
+    // Расшифровываем сообщение
+    std::vector<unsigned char> decrypted =  rsa.decrypt(encryptedMessage);
+    std::string decryptedMessage(decrypted.begin(), decrypted.end());
+    decryptedMessage.erase(std::find(decryptedMessage.begin(), decryptedMessage.end(), '\0'), decryptedMessage.end());
+    logger.log("Decrypted message: " + decryptedMessage);
+
+    return decryptedMessage == "OK";
 }
 
 
@@ -91,7 +132,7 @@ void* Server::ClientHandler(void* lpParam)
     Server* server = clientData->server;
     int connectionIndex = clientData->connectionIndex;
     server->logger.log("Try to handshake with client: " + std::to_string(connectionIndex));
-    server->handshake(server->connections[connectionIndex]);
+    server->logger.log(std::to_string(server->handshake(server->connections[connectionIndex])));
 
 
     server->logger.log("Handling client with index: " + std::to_string(connectionIndex));

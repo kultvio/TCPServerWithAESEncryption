@@ -1,5 +1,6 @@
 #include "Client.h"
-
+#include <cstdint>
+#include <cstring>
 
 namespace TCPserver
 {
@@ -21,6 +22,67 @@ namespace TCPserver
     Client::~Client()
     {
         close(Connection);
+    }
+
+    // Структура сертификата
+    struct Certificate {
+        std::vector<unsigned char> publickey;
+        std::vector<unsigned char> data;
+        std::vector<unsigned char> signature;
+    };
+
+    // Десериализация буфера в структуру Certificate
+    Certificate deserializeCert(const std::vector<unsigned char>& buffer) {
+        Certificate cert;
+        size_t offset = 0;
+
+        auto extractData = [&](std::vector<unsigned char>& target) {
+            int size;
+            std::memcpy(&size, buffer.data() + offset, sizeof(int));
+            offset += sizeof(int);
+
+            target.resize(size);
+            std::memcpy(target.data(), buffer.data() + offset, size);
+            offset += size;
+        };
+
+        extractData(cert.publickey);
+        extractData(cert.data);
+        extractData(cert.signature);
+
+        return cert;
+    }
+
+    bool Client::handshake() {
+        // Принимаем размер сертификата
+        int certSize;
+        recv(Connection, (char*)&certSize, sizeof(int), 0);
+
+        // Принимаем сериализованный буфер
+        std::vector<unsigned char> serializedCert(certSize);
+        recv(Connection, (char*)serializedCert.data(), certSize, 0);
+
+        // Десериализуем сертификат
+        Certificate cert = deserializeCert(serializedCert);
+        std::cout << "Certificate received. Verifying signature...\n";
+
+        // Проверяем подпись
+        if (!rsaServer.verify(cert.data, cert.signature)) {
+            std::cerr << "Signature verification failed.\n";
+            return false;
+        }
+        std::cout << "Signature verified successfully.\n";
+
+        // Отправляем зашифрованное сообщение "OK" серверу
+        std::string message = "OK";
+        std::vector<unsigned char> encryptedMessage = rsaServer.encrypt(std::vector<unsigned char>(message.begin(), message.end()));
+
+        int encryptedSize = encryptedMessage.size();
+        send(Connection, (char*)&encryptedSize, sizeof(int), 0);
+        send(Connection, (char*)encryptedMessage.data(), encryptedSize, 0);
+
+        std::cout << "Encrypted message sent. Handshake completed.\n";
+        return true;
     }
 
     void Client::start()
@@ -46,6 +108,7 @@ namespace TCPserver
             std::cerr << "Failed to connect to server!" << std::endl;
             exit(1);
         }
+        handshake();
         std::cout << "Connected to Server: Success." << std::endl;
         pthread_t thread;
         pthread_create(&thread, nullptr, ClientHandler, this);

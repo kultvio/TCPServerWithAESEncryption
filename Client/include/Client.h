@@ -36,7 +36,7 @@ namespace TCPserver
 
         static void* ClientHandler(void* lpParam);
         RSAEncryption& rsaServer;
-
+        bool handshake();
     public:
         Client(int port, std::string ipaddress, RSAEncryption& rsaServer);
         ~Client();

@@ -50,11 +50,14 @@ private:
     SocketManager socketManager;
     std::unique_ptr<PacketHandler> packetHandler;
     uint counter;
-
+    
     int connections[MAX_CONNECTIONS];
 
     ClientData clientData;
 	Certificate cert;
+    std::vector<unsigned char> serializeCert(const Certificate& cert);
+    std::vector<unsigned char> serializedCert;
+;
     
 };
 
