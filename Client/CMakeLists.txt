@@ -15,6 +15,7 @@ set(SERVER_SRC
     ${SRC_DIR}/main.cpp 
     ${SRC_DIR}/Client.cpp
     ${SRC_DIR}/RSAManager.cpp
+    ${SRC_DIR}/AESManager.cpp
     ${SRC_DIR}/Logger.cpp
 )
 

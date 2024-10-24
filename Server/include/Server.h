@@ -1,6 +1,7 @@
 #pragma once
 #include "SocketManager.h"
 #include "RSAManager.h"
+#include "AESManager.h"
 #include "Logger.h"
 #include <iostream>
 #include <thread>
@@ -27,9 +28,11 @@ public:
     void generateCertificate();
     int* getConnections();
     void log(std::string& message) { logger.log(message);}
+    AESManager aes;
+
 private:
     
-    bool handshake(int clientSoket);
+    std::vector<unsigned char> handshake(int clientSoket);
     void getConnect();
     static void* ClientHandler(void* lpParam);
     struct ClientData 
@@ -46,6 +49,7 @@ private:
 	
     Logger& logger;
 	RSAEncryption& rsa;
+    
 
     SocketManager socketManager;
     std::unique_ptr<PacketHandler> packetHandler;
@@ -72,7 +76,7 @@ enum PacketType
 class PacketProcessor {
 public:
     virtual ~PacketProcessor() = default;
-    virtual bool processPacket(Server* server, uint index) = 0;
+    virtual bool processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) = 0;
     virtual PacketType getPacketType() = 0;
 };
 
@@ -86,7 +90,7 @@ public:
     ~PacketHandler();
 
     void addProcessor(PacketType pType, std::unique_ptr<PacketProcessor> processor);
-    bool HandlePacket(int Index, PacketType pType);
+    bool HandlePacket(int Index, PacketType pType, std::vector<unsigned char>& AESkey);
 };
 
 
@@ -96,6 +100,6 @@ private:
     static PacketType pType;
 
 public:
-    bool processPacket(Server* server, uint index) override;
+    bool processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) override;
     PacketType getPacketType() override { return pType; }
 };

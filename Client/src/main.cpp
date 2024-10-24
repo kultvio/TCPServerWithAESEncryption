@@ -9,7 +9,7 @@ int main(int argc, char** argv)
 	const char* publicFile = argv[3];
 	rsa.loadPublicKeyFromFile(publicFile);
 	
-	TCPserver::Client client(atoi(argv[2]), argv[1], rsa);
+	Client client(atoi(argv[2]), argv[1], rsa);
 	client.start();
 	return 0;
 }

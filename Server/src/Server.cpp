@@ -14,11 +14,16 @@ Server::Server(int port, const std::string& ipaddress, Logger& logger, RSAEncryp
 Server::~Server() {
 }
 
+std::vector<unsigned char> removeTrailingZeros(const std::vector<unsigned char>& vec) {
+    auto it = std::find_if(vec.rbegin(), vec.rend(), [](unsigned char byte) { return byte != 0; });
+    return std::vector<unsigned char>(vec.begin(), it.base());
+}
+
 std::string vectorToHexString(const std::vector<unsigned char>& data) {
     std::stringstream hexStream;
 
     for(unsigned char byte: data) {
-        hexStream << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+        hexStream << std::hex << std::setw(2) << " " << static_cast<int>(byte);
     }
 
     return hexStream.str();
@@ -98,7 +103,7 @@ void Server::getConnect()
         }
     }
 }
-bool Server::handshake(int clientSocket) {
+std::vector<unsigned char> Server::handshake(int clientSocket) {
     logger.log("Sending serialized certificate to client...");
 
     // Сериализуем сертификат и отправляем его целиком
@@ -118,11 +123,10 @@ bool Server::handshake(int clientSocket) {
 
     // Расшифровываем сообщение
     std::vector<unsigned char> decrypted =  rsa.decrypt(encryptedMessage);
-    std::string decryptedMessage(decrypted.begin(), decrypted.end());
-    decryptedMessage.erase(std::find(decryptedMessage.begin(), decryptedMessage.end(), '\0'), decryptedMessage.end());
-    logger.log("Decrypted message: " + decryptedMessage);
-
-    return decryptedMessage == "OK";
+    decrypted = removeTrailingZeros(decrypted);
+   
+    logger.log("AES key:" + vectorToHexString(decrypted));
+    return decrypted;
 }
 
 
@@ -132,7 +136,7 @@ void* Server::ClientHandler(void* lpParam)
     Server* server = clientData->server;
     int connectionIndex = clientData->connectionIndex;
     server->logger.log("Try to handshake with client: " + std::to_string(connectionIndex));
-    server->logger.log(std::to_string(server->handshake(server->connections[connectionIndex])));
+    std::vector<unsigned char> AESkey = server->handshake(server->connections[connectionIndex]);
 
 
     server->logger.log("Handling client with index: " + std::to_string(connectionIndex));
@@ -148,7 +152,7 @@ void* Server::ClientHandler(void* lpParam)
             server->logger.log("Client with index " + std::to_string(connectionIndex) + " disconnected.");
             return nullptr;
         }
-        server->packetHandler->HandlePacket(connectionIndex,pType);
+        server->packetHandler->HandlePacket(connectionIndex, pType, AESkey);
     }
     return nullptr;
 }
@@ -168,10 +172,10 @@ void PacketHandler::addProcessor(PacketType pType, std::unique_ptr<PacketProcess
     PacketProcessors.emplace(pType, std::move(processor));
 }
 
-bool PacketHandler::HandlePacket(int index, PacketType pType) {
+bool PacketHandler::HandlePacket(int index, PacketType pType, std::vector<unsigned char>& AESkey) {
     auto it = PacketProcessors.find(pType);
     if (it != PacketProcessors.end()) {
-        return it->second->processPacket(server, index); 
+        return it->second->processPacket(server, index, AESkey); 
     } else {
         std::cerr << "Processor not found for the given packet type\n";
         return false;
@@ -190,29 +194,31 @@ PacketHandler::~PacketHandler()
 
 PacketType TextPacketProcessor::pType = P_TextPacket;
 
-bool TextPacketProcessor::processPacket(Server* server, uint index) {
+bool TextPacketProcessor::processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) {
     int msgSize;
     int bytesReceived = recv(server->getConnections()[index], (char*)&msgSize, sizeof(int), 0);
     if (bytesReceived <= 0) return false;
+    std::string logMessage = "Encrypted message size: " + std::to_string(msgSize);
+    server->log(logMessage);
+    std::vector<unsigned char> encryptedMessage(msgSize);
+    recv(server->getConnections()[index], (char*)encryptedMessage.data(), msgSize, 0);
 
-    char* msg = new char[msgSize + 1];
-    msg[msgSize] = '\0';
-    bytesReceived = recv(server->getConnections()[index], msg, msgSize, 0);
     if (bytesReceived <= 0) {
-        delete[] msg;
+
         return false;
     }
-    std::string logMessage = "New Message: Index: " + std::to_string(index) + " Message Size: " + std::to_string(msgSize)  + " Text:[ " + msg + " ]";
+
+    const std::string msg = server->aes.decrypt(encryptedMessage, AESkey);
+    logMessage = "New Message: Index: " + std::to_string(index) + " Message Size: " + std::to_string(msgSize)  + " Text:[ " + msg + " ]";
     server->log(logMessage);
 
-    for (int i = 0; i < MAX_CONNECTIONS; i++) {
-        if (i == index) continue;
-        if (server->getConnections()[i] == -1) continue;
-        send(server->getConnections()[i], (char*)&pType, sizeof(pType), 0);
-        send(server->getConnections()[i], (char*)&msgSize, sizeof(int), 0);
-        send(server->getConnections()[i], msg, msgSize, 0);
-    }
+    // for (int i = 0; i < MAX_CONNECTIONS; i++) {
+    //     if (i == index) continue;
+    //     if (server->getConnections()[i] == -1) continue;
+    //     send(server->getConnections()[i], (char*)&pType, sizeof(pType), 0);
+    //     send(server->getConnections()[i], (char*)&msgSize, sizeof(int), 0);
+    //     //send(server->getConnections()[i], msg, msgSize, 0);
+    // }
     
-    delete[] msg;
     return true;
 }
