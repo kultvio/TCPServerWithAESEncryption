@@ -137,6 +137,7 @@ void* Server::ClientHandler(void* lpParam)
     int connectionIndex = clientData->connectionIndex;
     server->logger.log("Try to handshake with client: " + std::to_string(connectionIndex));
     std::vector<unsigned char> AESkey = server->handshake(server->connections[connectionIndex]);
+    server->AESkeys[connectionIndex] = AESkey;
 
 
     server->logger.log("Handling client with index: " + std::to_string(connectionIndex));
@@ -172,13 +173,13 @@ void PacketHandler::addProcessor(PacketType pType, std::unique_ptr<PacketProcess
     PacketProcessors.emplace(pType, std::move(processor));
 }
 
-bool PacketHandler::HandlePacket(int index, PacketType pType, std::vector<unsigned char>& AESkey) {
+std::vector<unsigned char> PacketHandler::HandlePacket(int index, PacketType pType, std::vector<unsigned char>& AESkey) {
     auto it = PacketProcessors.find(pType);
     if (it != PacketProcessors.end()) {
         return it->second->processPacket(server, index, AESkey); 
     } else {
         std::cerr << "Processor not found for the given packet type\n";
-        return false;
+        return {'0'};
     }
 }
 
@@ -194,10 +195,10 @@ PacketHandler::~PacketHandler()
 
 PacketType TextPacketProcessor::pType = P_TextPacket;
 
-bool TextPacketProcessor::processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) {
+std::vector<unsigned char> TextPacketProcessor::processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) {
     int msgSize;
     int bytesReceived = recv(server->getConnections()[index], (char*)&msgSize, sizeof(int), 0);
-    if (bytesReceived <= 0) return false;
+    if (bytesReceived <= 0) return {'0'};
     std::string logMessage = "Encrypted message size: " + std::to_string(msgSize);
     server->log(logMessage);
     std::vector<unsigned char> encryptedMessage(msgSize);
@@ -205,20 +206,22 @@ bool TextPacketProcessor::processPacket(Server* server, uint index, std::vector<
 
     if (bytesReceived <= 0) {
 
-        return false;
+        return {'0'};
     }
 
     const std::string msg = server->aes.decrypt(encryptedMessage, AESkey);
-    logMessage = "New Message: Index: " + std::to_string(index) + " Message Size: " + std::to_string(msgSize)  + " Text:[ " + msg + " ]";
+    logMessage = "New Message: Index: " + std::to_string(index) + " Text:[ " + msg + " ]";
     server->log(logMessage);
 
-    // for (int i = 0; i < MAX_CONNECTIONS; i++) {
-    //     if (i == index) continue;
-    //     if (server->getConnections()[i] == -1) continue;
-    //     send(server->getConnections()[i], (char*)&pType, sizeof(pType), 0);
-    //     send(server->getConnections()[i], (char*)&msgSize, sizeof(int), 0);
-    //     //send(server->getConnections()[i], msg, msgSize, 0);
-    // }
+    for (int i = 0; i < MAX_CONNECTIONS; i++) {
+        if (i == index) continue;
+        if (server->getConnections()[i] == -1) continue;
+        encryptedMessage = server->aes.encrypt(msg, server->AESkeys[i]);
+        msgSize = encryptedMessage.size();
+        send(server->getConnections()[i], (char*)&pType, sizeof(pType), 0);
+        send(server->getConnections()[i], (char*)&msgSize, sizeof(int), 0);
+        send(server->getConnections()[i], (char*)encryptedMessage.data(), msgSize, 0);
+    }
     
-    return true;
+    return encryptedMessage;
 }

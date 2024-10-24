@@ -128,11 +128,14 @@ bool Client::processChatMessagePacket()
 {
     int msgSize;
     recv(Connection, &msgSize, sizeof(int), 0);
-    char* msg = new char[msgSize + 1];
-    msg[msgSize] = '\0';
-    recv(Connection, msg, msgSize, 0);
+    std::string logMessage = "Encrypted message size: " + std::to_string(msgSize);
+    std::cout << logMessage << std::endl;
+    std::vector<unsigned char> encryptedMessage(msgSize);
+    recv(Connection, (char*)encryptedMessage.data(), msgSize, 0);
+
+    std::string msg = aes.decrypt(encryptedMessage, key);
+
     std::cout << "New message: " << msg << std::endl;
-    delete[] msg;
     return true;
 }
 

@@ -29,6 +29,7 @@ public:
     int* getConnections();
     void log(std::string& message) { logger.log(message);}
     AESManager aes;
+    std::vector<unsigned char> AESkeys[MAX_CONNECTIONS];
 
 private:
     
@@ -40,7 +41,7 @@ private:
         Server* server;
         int connectionIndex;
     };
-
+    
 	struct Certificate {
 		std::vector<unsigned char> publickey;
 		std::vector<unsigned char> data;
@@ -49,6 +50,7 @@ private:
 	
     Logger& logger;
 	RSAEncryption& rsa;
+    
     
 
     SocketManager socketManager;
@@ -61,7 +63,7 @@ private:
 	Certificate cert;
     std::vector<unsigned char> serializeCert(const Certificate& cert);
     std::vector<unsigned char> serializedCert;
-;
+
     
 };
 
@@ -76,7 +78,7 @@ enum PacketType
 class PacketProcessor {
 public:
     virtual ~PacketProcessor() = default;
-    virtual bool processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) = 0;
+    virtual std::vector<unsigned char> processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) = 0;
     virtual PacketType getPacketType() = 0;
 };
 
@@ -90,7 +92,7 @@ public:
     ~PacketHandler();
 
     void addProcessor(PacketType pType, std::unique_ptr<PacketProcessor> processor);
-    bool HandlePacket(int Index, PacketType pType, std::vector<unsigned char>& AESkey);
+    std::vector<unsigned char> HandlePacket(int Index, PacketType pType, std::vector<unsigned char>& AESkey);
 };
 
 
@@ -100,6 +102,6 @@ private:
     static PacketType pType;
 
 public:
-    bool processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) override;
+    std::vector<unsigned char> processPacket(Server* server, uint index, std::vector<unsigned char>& AESkey) override;
     PacketType getPacketType() override { return pType; }
 };
