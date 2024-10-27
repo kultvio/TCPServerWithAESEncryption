@@ -182,13 +182,13 @@ bool Client::sendChatPacket()
 
 void Client::sendPacket()
 {
-    std::cout << "\nSelect packet type: " << std::endl;
-    std::cout << "1: Chat Message" << std::endl;
+    // std::cout << "\nSelect packet type: " << std::endl;
+    // std::cout << "1: Chat Message" << std::endl;
 
-    int packetTypeIndex;
-    std::cin >> packetTypeIndex;
-    std::cin.ignore();
-    packetTypeIndex--;
+    int packetTypeIndex = 0;
+    // std::cin >> packetTypeIndex;
+    // std::cin.ignore();
+    // packetTypeIndex--;
 
     switch (packetTypeIndex)
     {
