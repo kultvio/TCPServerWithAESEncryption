@@ -133,8 +133,8 @@ bool Client::processChatMessagePacket()
 {
     int msgSize;
     recv(Connection, &msgSize, sizeof(int), 0);
-    std::string logMessage = "Encrypted message size: " + std::to_string(msgSize);
-    std::cout << logMessage << std::endl;
+    //std::string logMessage = "Encrypted message size: " + std::to_string(msgSize);
+    //std::cout << logMessage << std::endl;
     std::vector<unsigned char> encryptedMessage(msgSize);
     recv(Connection, (char*)encryptedMessage.data(), msgSize, 0);
 
@@ -168,7 +168,7 @@ bool Client::sendChatPacket()
 {
     Packet packetType = P_ChatMessage;
 
-    std::cout << "Enter a chat message: ";
+    //std::cout << "Enter a chat message: ";
     std::string msg;
     std::getline(std::cin, msg);
     std::vector<unsigned char> encrypted = aes.encrypt(msg,key);
