@@ -22,10 +22,10 @@ Logger::~Logger() {
         logFIle.close();
     }
 }
-void Logger::log(const std::string& message) {
+void Logger::log(const std::string& message, const std::string& type) {
     std::lock_guard<std::mutex> lock(logMutex);
 
-    std::string logMessage = "[" + getCurrentTIme() + "]: " + message;
+    std::string logMessage = "[" + type + "]: " +"[" + getCurrentTIme() + "]: " + message;
     
     logFIle << logMessage << std::endl;
 

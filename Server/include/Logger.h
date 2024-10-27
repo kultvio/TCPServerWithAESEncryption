@@ -19,8 +19,7 @@ private:
     
 public:
     std::string getCurrentTIme();
-    void log(const std::string& message);
+    void log(const std::string& message, const std::string& type = "INFO");
     Logger(const std::string& filePath = "log.log");
     ~Logger();
 };
-

@@ -104,29 +104,44 @@ void Server::getConnect()
     }
 }
 std::vector<unsigned char> Server::handshake(int clientSocket) {
-    logger.log("Sending serialized certificate to client...");
+    try
+    {
+        logger.log("Sending serialized certificate to client...");
+        // Сериализуем сертификат и отправляем его целиком
+        int certSize = serializedCert.size();
+        // Отправляем размер и сам сериализованный буфер
+        send(clientSocket, (char*)&certSize, sizeof(int), 0);
+        send(clientSocket, (char*)serializedCert.data(), certSize, 0);
 
-    // Сериализуем сертификат и отправляем его целиком
-    int certSize = serializedCert.size();
+        logger.log("Waiting for encrypted message from client...");
+
+        // Принимаем зашифрованное сообщение от клиента
+        int is_verify;
+        recv(clientSocket, (char*)&is_verify, sizeof(int), 0);
+        if(is_verify != 1) {
+            throw std::runtime_error("Сlient did not verify the signature");
+        }
+
+        int encryptedSize;
+        recv(clientSocket, (char*)&encryptedSize, sizeof(int), 0);
+        std::vector<unsigned char> encryptedMessage(encryptedSize);
+        recv(clientSocket, (char*)encryptedMessage.data(), encryptedSize, 0);
+
+        // Расшифровываем сообщение
+        std::vector<unsigned char> decrypted =  rsa.decrypt(encryptedMessage);
+        decrypted = removeTrailingZeros(decrypted);
     
-    // Отправляем размер и сам сериализованный буфер
-    send(clientSocket, (char*)&certSize, sizeof(int), 0);
-    send(clientSocket, (char*)serializedCert.data(), certSize, 0);
-
-    logger.log("Waiting for encrypted message from client...");
-
-    // Принимаем зашифрованное сообщение от клиента
-    int encryptedSize;
-    recv(clientSocket, (char*)&encryptedSize, sizeof(int), 0);
-    std::vector<unsigned char> encryptedMessage(encryptedSize);
-    recv(clientSocket, (char*)encryptedMessage.data(), encryptedSize, 0);
-
-    // Расшифровываем сообщение
-    std::vector<unsigned char> decrypted =  rsa.decrypt(encryptedMessage);
-    decrypted = removeTrailingZeros(decrypted);
+        logger.log("AES key:" + vectorToHexString(decrypted));
+        return decrypted;
+    }
+    catch(const std::exception& e)
+    {
+        logger.log(e.what(),"ERROR");
+        return {'0'};
+    }
+    
    
-    logger.log("AES key:" + vectorToHexString(decrypted));
-    return decrypted;
+    
 }
 
 
@@ -137,6 +152,13 @@ void* Server::ClientHandler(void* lpParam)
     int connectionIndex = clientData->connectionIndex;
     server->logger.log("Try to handshake with client: " + std::to_string(connectionIndex));
     std::vector<unsigned char> AESkey = server->handshake(server->connections[connectionIndex]);
+    if (AESkey[0] == '0') {
+        close(server->connections[connectionIndex]);
+        server->connections[connectionIndex] = -1;
+        server->counter--;
+        server->logger.log("Client with index " + std::to_string(connectionIndex) + " disconnected.");
+        return nullptr;
+    }
     server->AESkeys[connectionIndex] = AESkey;
 
 

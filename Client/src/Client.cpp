@@ -71,7 +71,8 @@ bool Client::handshake() {
         return false;
     }
     std::cout << "Signature verified successfully.\n";
-
+    int success = 1;
+    send(Connection, (char*)&success, sizeof(int), 0);
     // Отправляем зашифрованное сообщение "OK" серверу
     key = aes.generateAESKey();
     std::vector<unsigned char> encryptedKey = rsaServer.encrypt(key);
@@ -107,7 +108,11 @@ void Client::connectToServer()
         std::cerr << "Failed to connect to server!" << std::endl;
         exit(1);
     }
-    handshake();
+    if( !handshake()) {
+        std::cerr << "Failed to connect to server!" << std::endl;
+        close(Connection);
+        exit(1);
+    }
     std::cout << "Connected to Server: Success." << std::endl;
     pthread_t thread;
     pthread_create(&thread, nullptr, ClientHandler, this);
